@@ -1,0 +1,11 @@
+[tools]
+# core runtimes (optional)
+node = "24"
+
+# CLI tools
+"github:cli/cli" = "latest"
+"npm:@openai/codex" = "latest"
+"npm:@anthropic-ai/claude-code" = "latest"
+
+[settings]
+experimental = true
