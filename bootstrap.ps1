@@ -37,6 +37,22 @@ function Has-Command($name) {
   return [bool](Get-Command $name -ErrorAction SilentlyContinue)
 }
 
+function Ensure-ClaudeCode {
+  if (Has-Command "claude") {
+    Write-Ok "Claude Code is already installed: $(claude --version)"
+    return
+  }
+
+  Write-Info "Claude Code not found. Installing via official installer (stable)..."
+  & ([scriptblock]::Create((irm https://claude.ai/install.ps1))) stable
+
+  if (Has-Command "claude") {
+    Write-Ok "Claude Code installed: $(claude --version)"
+  } else {
+    Write-Warn "Claude Code installed but not visible in current session (PATH refresh needed)."
+  }
+}
+
 function Ensure-WinGet {
   if (Has-Command "winget") { return }
   throw "winget was not found. Install App Installer (Microsoft Store) or install mise via your preferred method, then re-run."
@@ -130,6 +146,7 @@ Write-Info "Bootstrapping Windows dotfiles (mise)..."
 Ensure-Mise
 Ensure-MiseConfig
 Ensure-PwshProfile
+Ensure-ClaudeCode
 
 if ($RunInstall) {
   Run-MiseInstall
