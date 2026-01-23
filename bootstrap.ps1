@@ -22,8 +22,7 @@ param(
   [string]$PwshProfilePath  = $PROFILE,
 
   # Behavior
-  [switch]$RunInstall       = $true,
-  [switch]$BackupExisting   = $true
+  [switch]$RunInstall       = $true
 )
 
 Set-StrictMode -Version Latest
@@ -37,6 +36,22 @@ function Has-Command($name) {
   return [bool](Get-Command $name -ErrorAction SilentlyContinue)
 }
 
+function Ensure-ClaudeCode {
+  if (Has-Command "claude") {
+    Write-Ok "Claude Code is already installed: $(claude --version)"
+    return
+  }
+
+  Write-Info "Claude Code not found. Installing via official installer..."
+  irm https://claude.ai/install.ps1 | iex
+
+  if (Has-Command "claude") {
+    Write-Ok "Claude Code installed: $(claude --version)"
+  } else {
+    Write-Warn "Claude Code installed but not visible in current session (PATH refresh needed)."
+  }
+}
+
 function Ensure-WinGet {
   if (Has-Command "winget") { return }
   throw "winget was not found. Install App Installer (Microsoft Store) or install mise via your preferred method, then re-run."
@@ -44,6 +59,8 @@ function Ensure-WinGet {
 
 function Ensure-Mise {
   if (Has-Command "mise") {
+    Write-Info "Updating mise (self-update)..."
+    mise self-update -y
     Write-Ok "mise is already installed: $(mise --version)"
     return
   }
@@ -68,17 +85,29 @@ function Ensure-MiseConfig {
   New-Item -ItemType Directory -Force -Path $MiseConfigDir | Out-Null
   $dst = Join-Path $MiseConfigDir "config.toml"
 
-  if ($BackupExisting -and (Test-Path $dst)) {
-    $bak = "$dst.bak.$(Get-Date -Format 'yyyyMMddHHmmss')"
-    Copy-Item -Force $dst $bak
-    Write-Ok "Backed up existing mise config to: $bak"
-  }
-
   Copy-Item -Force $RepoConfigToml $dst
   Write-Ok "Installed mise config: $dst"
 
   [Environment]::SetEnvironmentVariable("MISE_CONFIG_DIR", $MiseConfigDir, "User")
   Write-Ok "Set user env: MISE_CONFIG_DIR=$MiseConfigDir"
+}
+
+function Ensure-LocalBinPath {
+  $localBin = Join-Path $env:USERPROFILE ".local\bin"
+  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  if ([string]::IsNullOrWhiteSpace($userPath)) {
+    $newPath = $localBin
+  } else {
+    $pathParts = $userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    if ($pathParts -notcontains $localBin) {
+      $pathParts += $localBin
+    }
+    $newPath = ($pathParts -join ';')
+  }
+  if ($newPath -ne $userPath) {
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+    Write-Ok "Set user env: Path+=${localBin}"
+  }
 }
 
 function Ensure-PwshProfile {
@@ -88,12 +117,6 @@ function Ensure-PwshProfile {
 
   $profileDir = Split-Path -Parent $PwshProfilePath
   New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
-
-  if ($BackupExisting -and (Test-Path $PwshProfilePath)) {
-    $bak = "$PwshProfilePath.bak.$(Get-Date -Format 'yyyyMMddHHmmss')"
-    Copy-Item -Force $PwshProfilePath $bak
-    Write-Ok "Backed up existing PowerShell profile to: $bak"
-  }
 
   Copy-Item -Force $RepoProfilePs1 $PwshProfilePath
   Write-Ok "Installed PowerShell profile: $PwshProfilePath"
@@ -108,6 +131,10 @@ function Run-MiseInstall {
   Write-Info "Running: mise install"
   mise install
   Write-Ok "mise install done."
+
+  Write-Info "Running: mise prune (removing unused tool versions)..."
+  mise prune --yes
+  Write-Ok "mise prune done."
 
   Write-Info "Quick check (may require a new shell for shims to take effect):"
   try { mise --version | Write-Host } catch {}
@@ -130,11 +157,14 @@ Write-Info "Bootstrapping Windows dotfiles (mise)..."
 Ensure-Mise
 Ensure-MiseConfig
 Ensure-PwshProfile
+Ensure-LocalBinPath
 
 if ($RunInstall) {
   Run-MiseInstall
 } else {
   Write-Info "RunInstall disabled. You can run `mise install` manually after restarting PowerShell."
 }
+
+Ensure-ClaudeCode
 
 Write-Ok "Done."
