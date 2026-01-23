@@ -125,6 +125,10 @@ function Run-MiseInstall {
   mise install
   Write-Ok "mise install done."
 
+  Write-Info "Running: mise prune (removing unused tool versions)..."
+  mise prune --yes
+  Write-Ok "mise prune done."
+
   Write-Info "Quick check (may require a new shell for shims to take effect):"
   try { mise --version | Write-Host } catch {}
   foreach ($cmd in @("gh", "codex", "claude")) {
@@ -146,12 +150,13 @@ Write-Info "Bootstrapping Windows dotfiles (mise)..."
 Ensure-Mise
 Ensure-MiseConfig
 Ensure-PwshProfile
-Ensure-ClaudeCode
 
 if ($RunInstall) {
   Run-MiseInstall
 } else {
   Write-Info "RunInstall disabled. You can run `mise install` manually after restarting PowerShell."
 }
+
+Ensure-ClaudeCode
 
 Write-Ok "Done."
