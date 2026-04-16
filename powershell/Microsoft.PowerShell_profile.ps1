@@ -9,7 +9,9 @@ mise activate pwsh | Out-String | Invoke-Expression
 # --- Optional quality-of-life (safe to delete) ---
 # Better history/search behavior
 if (Get-Module -ListAvailable -Name PSReadLine) {
-  Import-Module PSReadLine
+  if (-not (Get-Module -Name PSReadLine)) {
+    Import-Module PSReadLine
+  }
   Set-PSReadLineOption -EditMode Windows
   Set-PSReadLineOption -PredictionSource History
   Set-PSReadLineKeyHandler -Key Tab -Function Complete
