@@ -13,7 +13,9 @@ if (Get-Module -ListAvailable -Name PSReadLine) {
     Import-Module PSReadLine
   }
   Set-PSReadLineOption -EditMode Windows
-  Set-PSReadLineOption -PredictionSource History
+  if (-not [Console]::IsOutputRedirected) {
+    Set-PSReadLineOption -PredictionSource History
+  }
   Set-PSReadLineKeyHandler -Key Tab -Function Complete
 }
 
