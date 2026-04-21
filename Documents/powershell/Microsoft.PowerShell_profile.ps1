@@ -3,7 +3,12 @@
 # - enable mise shims for this shell
 # - (optional) a couple of sane defaults
 
-# Enable mise shims (so `gh`, `codex`, `claude`, etc. resolve via mise)
+$commonModulePath = Join-Path $PSScriptRoot "Dotfiles.Common.psm1"
+if (Test-Path $commonModulePath) {
+  Import-Module $commonModulePath -Force -DisableNameChecking
+}
+
+# Enable mise shims (so `gh`, `codex`, etc. resolve via mise)
 mise activate pwsh | Out-String | Invoke-Expression
 
 # --- Optional quality-of-life (safe to delete) ---

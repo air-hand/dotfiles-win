@@ -1,3 +1,6 @@
 {
     "terminal.integrated.defaultProfile.windows": "pwsh",
+    "files.associations": {
+        "*.ps1.tmpl": "powershell"
+    }
 }

@@ -1,0 +1,13 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$commonModulePath = Join-Path '{{ .chezmoi.sourceDir }}' 'Documents\powershell\Dotfiles.Common.psm1'
+Import-Module $commonModulePath -Force -DisableNameChecking
+
+if (-not(Has-Command "mise")) {
+    winget install -e --id jdx.mise
+}
+
+mise self-update -y
+mise i
+mise prune -y
