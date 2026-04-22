@@ -1,0 +1,45 @@
+{
+  extends: [
+    'helpers:pinGitHubActionDigests',
+  ],
+  prConcurrentLimit: 10,
+  enabledManagers: ['mise', 'github-actions'],
+  labels: ['dependencies'],
+  assigneesFromCodeOwners: true,
+  packageRules: [
+    {
+      matchSourceUrls: [
+        'https://github.com/air-hand-org/**',
+        'https://github.com/actions/**',
+      ],
+      minimumReleaseAge: '0 days',
+    },
+    {
+      matchPackageNames: ["@openai/codex"],
+      minimumReleaseAge: '0 days',
+    },
+    {
+      matchUpdateTypes: ['major'],
+      addLabels: ['major']
+    },
+    {
+      matchUpdateTypes: ['minor'],
+      addLabels: ['minor'],
+      automerge: true,
+    },
+    {
+      matchUpdateTypes: ['patch'],
+      addLabels: ['patch'],
+      automerge: true,
+    }
+  ],
+  mise: {
+    managerFilePatterns: [
+      '(^|/)\\.?mise\\.toml$',
+      '(^|/)\\.?mise/config\\.toml$',
+      '(^|/)\\.?mise/config.*\\.toml$'
+    ]
+  },
+  rebaseWhen: "behind-base-branch",
+  minimumReleaseAge: "3 days",
+}
