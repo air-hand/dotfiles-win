@@ -1,0 +1,9 @@
+set main-view = id date author:full commit-title:graph=yes,refs=yes
+set blame-view = date:default author:full file-name:auto id:yes,color line-number:yes,interval=5 text
+
+# revert on main view by !
+bind main ! ?git revert %(commit)
+# rebase interactive on main view %(commit) to HEAD
+bind main <Ctrl-r> ?git rebase -i %(commit)
+# push to remote on main view
+bind main P ?git push -u %(remote) %(repo:head)
