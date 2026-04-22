@@ -1,0 +1,23 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$commonModulePath = Join-Path '{{ .chezmoi.sourceDir }}' 'Documents\powershell\Dotfiles.Common.psm1'
+Import-Module $commonModulePath -Force -DisableNameChecking
+
+if (Get-Module -ListAvailable -Name posh-git) {
+  Write-Ok "posh-git is already installed."
+  return
+}
+
+if (-not (Get-Command Install-Module -ErrorAction SilentlyContinue)) {
+  throw "Install-Module was not found. PowerShellGet is required to install posh-git."
+}
+
+$psGallery = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
+if ($null -ne $psGallery -and $psGallery.InstallationPolicy -ne "Trusted") {
+  Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+}
+
+Write-Info "Installing posh-git via PowerShellGet..."
+PowerShellGet\Install-Module posh-git -Scope CurrentUser -Force
+Write-Ok "posh-git installed."

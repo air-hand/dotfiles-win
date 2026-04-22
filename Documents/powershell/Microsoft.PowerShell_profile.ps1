@@ -8,6 +8,13 @@ if (Test-Path $commonModulePath) {
   Import-Module $commonModulePath -Force -DisableNameChecking
 }
 
+# posh-git adds git-aware prompt and tab completion.
+if (Get-Module -ListAvailable -Name posh-git) {
+  if (-not (Get-Module -Name posh-git)) {
+    Import-Module posh-git
+  }
+}
+
 # Enable mise shims (so `gh`, `codex`, etc. resolve via mise)
 mise activate pwsh | Out-String | Invoke-Expression
 
