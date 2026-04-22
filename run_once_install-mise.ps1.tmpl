@@ -8,6 +8,8 @@ if (-not(Has-Command "mise")) {
     winget install -e --id jdx.mise
 }
 
+# install cli globally by mise. hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
+
 mise self-update -y
 mise i
 mise prune -y
