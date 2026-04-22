@@ -1,0 +1,28 @@
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+permissions: {}
+
+jobs:
+  ci:
+    uses: ./.github/workflows/_ci.yml
+    permissions:
+      contents: read
+  
+  check-result:
+    needs: ci
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    if: ${{ always() && needs.ci.result != 'success' }}
+    steps:
+      - name: exit with failure
+        run: exit 1
