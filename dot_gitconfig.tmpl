@@ -1,0 +1,22 @@
+{{- $git_name := get . "git_name" | default "" -}}
+{{- $git_email := get . "git_email" | default "" -}}
+{{- if or $git_name $git_email }}
+[user]
+{{- if $git_name }}
+    name = {{ $git_name | quote }}
+{{- end }}
+{{- if $git_email }}
+    email = {{ $git_email | quote }}
+{{- end }}
+{{- end }}
+[core]
+    autocrlf = false
+    editor = code --wait
+[pull]
+    rebase = false
+    ff = only
+[init]
+    defaultBranch = main
+[alias]
+    prn = fetch --prune
+    push-f = push --force-with-lease --force-if-includes

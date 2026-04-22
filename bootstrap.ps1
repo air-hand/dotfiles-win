@@ -1,40 +1,21 @@
 # bootstrap.ps1
-# - Installs mise (via winget) if missing
-# - Installs/updates your global mise config.toml (copied from this repo)
-# - Installs/updates your PowerShell profile (copied from this repo, overwrite-safe)
-# - Runs `mise install`
+# - Installs chezmoi & apply
 #
 # Usage:
-#   pwsh -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1
-#
-# Expected files in the same repo:
-#   .\mise\config.toml
-#   .\powershell\Microsoft.PowerShell_profile.ps1
+#   pwsh -ExecutionPolicy Bypass -File .\bootstrap.ps1
+
 
 [CmdletBinding()]
 param(
-  # Repo paths
-  [string]$RepoConfigToml   = (Join-Path $PSScriptRoot "mise\config.toml"),
-  [string]$RepoProfilePs1   = (Join-Path $PSScriptRoot "powershell\Microsoft.PowerShell_profile.ps1"),
-
-  # Targets
-  [string]$MiseConfigDir    = (Join-Path $env:USERPROFILE ".config\mise"),
-  [string]$PwshProfilePath  = $PROFILE,
-
-  # Behavior
-  [switch]$RunInstall       = $true
+  [string]$GITHUB_OWNER  = "air-hand"
+  , [string]$GITHUB_DOTFILES_REPO   = "dotfiles-win"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Write-Info($msg) { Write-Host "[*] $msg" }
-function Write-Ok($msg)   { Write-Host "[+] $msg" }
-function Write-Warn($msg) { Write-Host "[!] $msg" -ForegroundColor Yellow }
-
-function Has-Command($name) {
-  return [bool](Get-Command $name -ErrorAction SilentlyContinue)
-}
+$commonModulePath = Join-Path $PSScriptRoot "Documents\powershell\Dotfiles.Common.psm1"
+Import-Module $commonModulePath -Force -DisableNameChecking
 
 function Ensure-ClaudeCode {
   if (Has-Command "claude") {
@@ -55,6 +36,17 @@ function Ensure-ClaudeCode {
 function Ensure-WinGet {
   if (Has-Command "winget") { return }
   throw "winget was not found. Install App Installer (Microsoft Store) or install mise via your preferred method, then re-run."
+}
+
+function Ensure-Chezmoi {
+  if (Has-Command "chezmoi") {
+    return
+  }
+  Write-Info "chezmoi not found. installing"
+  winget install -e --id twpayne.chezmoi
+  if (-not(Has-Command "chezmoi")) {
+    Write-Warn "installed chezmoi, but not in PATH. refresh current shell."
+  }
 }
 
 function Ensure-Mise {
@@ -111,15 +103,12 @@ function Ensure-LocalBinPath {
 }
 
 function Ensure-PwshProfile {
-  if (-not (Test-Path $RepoProfilePs1)) {
-    throw "Repo PowerShell profile not found: $RepoProfilePs1"
-  }
-
-  $profileDir = Split-Path -Parent $PwshProfilePath
-  New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
-
-  Copy-Item -Force $RepoProfilePs1 $PwshProfilePath
-  Write-Ok "Installed PowerShell profile: $PwshProfilePath"
+  Write-Info $PwshProfilePath
+#  $profileDir = Split-Path -Parent $PwshProfilePath
+#  New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
+#
+#  Copy-Item -Force $RepoProfilePs1 $PwshProfilePath
+#  Write-Ok "Installed PowerShell profile: $PwshProfilePath"
 }
 
 function Run-MiseInstall {
@@ -154,16 +143,17 @@ function Run-MiseInstall {
 }
 
 Write-Info "Bootstrapping Windows dotfiles (mise)..."
-Ensure-Mise
-Ensure-MiseConfig
-Ensure-PwshProfile
-Ensure-LocalBinPath
+Ensure-Chezmoi
+chezmoi init https://github.com/$GITHUB_OWNER/$GITHUB_DOTFILES_REPO
+chezmoi update
+chezmoi apply
 
-if ($RunInstall) {
-  Run-MiseInstall
-} else {
-  Write-Info "RunInstall disabled. You can run `mise install` manually after restarting PowerShell."
-}
+#Ensure-Mise
+#Ensure-MiseConfig
+#Ensure-PwshProfile
+#Ensure-LocalBinPath
+#
+#Run-MiseInstall
 
 Ensure-ClaudeCode
 

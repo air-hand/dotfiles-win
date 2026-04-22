@@ -1,0 +1,18 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$commonModulePath = Join-Path '{{ .chezmoi.sourceDir }}' 'Documents\powershell\Dotfiles.Common.psm1'
+Import-Module $commonModulePath -Force -DisableNameChecking
+
+if (Has-Command "claude") {
+  return
+}
+
+Write-Info "Claude Code not found. Installing via official installer..."
+irm https://claude.ai/install.ps1 | iex
+
+if (Has-Command "claude") {
+  Write-Ok "Claude Code installed: $(claude --version)"
+} else {
+  Write-Warn "Claude Code installed but not visible in current session (PATH refresh needed)."
+}
