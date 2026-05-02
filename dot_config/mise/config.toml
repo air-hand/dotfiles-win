@@ -4,7 +4,7 @@ node = "24"
 
 # CLI tools
 "github:cli/cli" = "2.92.0"
-"pinact" = "3.9.0"
+"pinact" = "3.9.2"
 "npm:@openai/codex" = "0.128.0"
 
 [settings]
