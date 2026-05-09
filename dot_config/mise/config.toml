@@ -6,6 +6,7 @@ node = "24"
 "github:cli/cli" = "2.92.0"
 "pinact" = "3.9.2"
 "npm:@openai/codex" = "0.130.0"
+"neovim" = "0.12.2"
 
 [settings]
 experimental = true
