@@ -3,9 +3,13 @@
 # - enable mise shims for this shell
 # - (optional) a couple of sane defaults
 
-$commonModulePath = Join-Path $PSScriptRoot "Dotfiles.Common.psm1"
-if (Test-Path $commonModulePath) {
-  Import-Module $commonModulePath -Force -DisableNameChecking
+$profileModulesPath = Join-Path $PSScriptRoot "ProfileModules"
+if (Test-Path $profileModulesPath) {
+  Get-ChildItem -Path $profileModulesPath -Filter "*.psm1" -File |
+    Sort-Object Name |
+    ForEach-Object {
+      Import-Module $_.FullName -Force -DisableNameChecking
+    }
 }
 
 # posh-git adds git-aware prompt and tab completion.
