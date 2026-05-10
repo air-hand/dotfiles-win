@@ -12,6 +12,8 @@ if (Test-Path $profileModulesPath) {
     }
 }
 
+Import-Module VisualStudio.Utils -DisableNameChecking
+
 # posh-git adds git-aware prompt and tab completion.
 if (Get-Module -ListAvailable -Name posh-git) {
   if (-not (Get-Module -Name posh-git)) {
