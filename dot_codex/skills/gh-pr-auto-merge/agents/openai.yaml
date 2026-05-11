@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Auto Merge"
+  short_description: "Commit changes and set PR auto-merge"
+  default_prompt: "Use $gh-pr-auto-merge to commit this branch, create a PR, and enable squash auto-merge."

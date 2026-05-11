@@ -1,7 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$commonModulePath = Join-Path '{{ .chezmoi.sourceDir }}' 'Documents\powershell\Dotfiles.Common.psm1'
+$commonModulePath = Join-Path '{{ .chezmoi.sourceDir }}' 'Documents\PowerShell\ProfileModules\Dotfiles.Common.psm1'
 Import-Module $commonModulePath -Force -DisableNameChecking
 
 if (-not(Has-Command "mise")) {
