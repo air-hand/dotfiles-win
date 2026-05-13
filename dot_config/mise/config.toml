@@ -5,7 +5,7 @@
 "npm:@openai/codex" = "0.130.0"
 "neovim" = "0.12.2"
 "zellij" = "0.44.2"
-"python" = "3.14.4"
+"python" = "3.14.5"
 
 [settings]
 experimental = true
