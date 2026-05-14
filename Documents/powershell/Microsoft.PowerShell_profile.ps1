@@ -42,3 +42,7 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 # Convenience aliases (optional)
 Set-Alias ll Get-ChildItem -Option AllScope
+
+function codex-llama {
+  codex -p llama_cpp @args
+}

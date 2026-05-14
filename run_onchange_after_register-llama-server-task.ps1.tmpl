@@ -1,0 +1,273 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+{{- $localLLM := .local_llm }}
+{{- $enabled := $localLLM.enabled }}
+{{- $modelAlias := $localLLM.modelAlias }}
+{{- $hfRepo := $localLLM.hfRepo }}
+{{- $hfQuant := $localLLM.hfQuant }}
+{{- $hfFile := get $localLLM "hfFile" }}
+{{- $serverHost := $localLLM.serverHost }}
+{{- $serverPort := $localLLM.serverPort }}
+{{- $cacheDir := $localLLM.cacheDir }}
+{{- $ctxSize := $localLLM.ctxSize }}
+{{- $gpuLayers := $localLLM.gpuLayers }}
+{{- $extraArgs := $localLLM.extraArgs }}
+{{- $llamaServerVerbose := $localLLM.llamaServerVerbose }}
+{{- $llamaCppCudaEnabled := $localLLM.llamaCppCudaEnabled }}
+{{- $llamaCppCudaRuntimeUrl := $localLLM.llamaCppCudaRuntimeUrl }}
+{{- $llamaCppCudaRuntimeSha256 := $localLLM.llamaCppCudaRuntimeSha256 }}
+{{- $llamaCppCudaBinaryUrl := $localLLM.llamaCppCudaBinaryUrl }}
+{{- $llamaCppCudaBinarySha256 := $localLLM.llamaCppCudaBinarySha256 }}
+
+# chezmoi onchange dependencies:
+# local-llm-config = {{ includeTemplate ".chezmoitemplates/local_llm.toml.tmpl" (dict "localLlamaCacheDir" $cacheDir) | sha256sum }}
+
+$TaskName = "llama-server"
+$ModelAlias = {{ $modelAlias | quote }}
+$HfRepo = {{ $hfRepo | quote }}
+$HfQuant = {{ $hfQuant | quote }}
+$HfFile = {{ $hfFile | quote }}
+$HostName = {{ $serverHost | quote }}
+$Port = {{ $serverPort }}
+$CacheDir = {{ $cacheDir | quote }}
+$CtxSize = {{ $ctxSize }}
+$GpuLayers = {{ $gpuLayers | quote }}
+$ExtraArgs = @({{ range $index, $arg := $extraArgs }}{{ if $index }}, {{ end }}{{ $arg | quote }}{{ end }})
+$LlamaServerVerbose = [bool]::Parse({{ $llamaServerVerbose | quote }})
+$LlamaCppCudaEnabled = [bool]::Parse({{ $llamaCppCudaEnabled | quote }})
+$LlamaCppCudaRuntimeUrl = {{ $llamaCppCudaRuntimeUrl | quote }}
+$LlamaCppCudaRuntimeSha256 = {{ $llamaCppCudaRuntimeSha256 | quote }}
+$LlamaCppCudaBinaryUrl = {{ $llamaCppCudaBinaryUrl | quote }}
+$LlamaCppCudaBinarySha256 = {{ $llamaCppCudaBinarySha256 | quote }}
+$LogDir = Join-Path $HOME ".local\state\llama-server\logs"
+$LogFile = Join-Path $LogDir "server.log"
+
+if (-not [bool]::Parse({{ $enabled | quote }})) {
+  $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+  if ($existingTask) {
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+  }
+  return
+}
+
+function Get-UrlFileName($Url) {
+  return [System.IO.Path]::GetFileName(([Uri]$Url).AbsolutePath)
+}
+
+function Get-FileNameWithoutZipExtension($FileName) {
+  if ($FileName.EndsWith(".zip", [StringComparison]::OrdinalIgnoreCase)) {
+    return $FileName.Substring(0, $FileName.Length - 4)
+  }
+
+  return [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+}
+
+function Get-Sha256($Path) {
+  return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Assert-Sha256($Path, $ExpectedSha256) {
+  $actual = Get-Sha256 $Path
+  if ($actual -ne $ExpectedSha256.ToLowerInvariant()) {
+    throw "SHA256 mismatch for $Path. Expected '$ExpectedSha256', actual '$actual'."
+  }
+}
+
+function Save-VerifiedArchive($Url, $ExpectedSha256, $Destination) {
+  if (Test-Path -LiteralPath $Destination) {
+    Assert-Sha256 $Destination $ExpectedSha256
+    return
+  }
+
+  $partial = "$Destination.tmp"
+  if (Test-Path -LiteralPath $partial) {
+    Remove-Item -LiteralPath $partial -Force
+  }
+
+  try {
+    Invoke-WebRequest -Uri $Url -OutFile $partial
+    Assert-Sha256 $partial $ExpectedSha256
+    Move-Item -LiteralPath $partial -Destination $Destination
+  } finally {
+    if (Test-Path -LiteralPath $partial) {
+      Remove-Item -LiteralPath $partial -Force
+    }
+  }
+}
+
+function Install-LlamaCppCuda {
+  if (-not $LlamaCppCudaEnabled) {
+    return
+  }
+
+  if ([string]::IsNullOrWhiteSpace($LlamaCppCudaRuntimeUrl) -or [string]::IsNullOrWhiteSpace($LlamaCppCudaBinaryUrl)) {
+    throw "llama.cpp CUDA release URLs are not configured."
+  }
+
+  $binaryFileName = Get-UrlFileName $LlamaCppCudaBinaryUrl
+  $runtimeFileName = Get-UrlFileName $LlamaCppCudaRuntimeUrl
+  $installLeaf = Get-FileNameWithoutZipExtension $binaryFileName
+  $installRoot = Join-Path $HOME ".local\share\llama.cpp"
+  $installDir = Join-Path $installRoot $installLeaf
+  $llamaServerExe = Join-Path $installDir "llama-server.exe"
+
+  if (Test-Path -LiteralPath $llamaServerExe) {
+    return
+  }
+
+  $workRoot = Join-Path ([System.IO.Path]::GetTempPath()) "chezmoi-llama-cpp-cuda"
+  $extractDir = Join-Path $workRoot "extract"
+  $binaryZip = Join-Path $workRoot $binaryFileName
+  $runtimeZip = Join-Path $workRoot $runtimeFileName
+
+  New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
+  if (Test-Path -LiteralPath $extractDir) {
+    Remove-Item -LiteralPath $extractDir -Recurse -Force
+  }
+  New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+
+  Save-VerifiedArchive $LlamaCppCudaBinaryUrl $LlamaCppCudaBinarySha256 $binaryZip
+  Save-VerifiedArchive $LlamaCppCudaRuntimeUrl $LlamaCppCudaRuntimeSha256 $runtimeZip
+
+  Expand-Archive -LiteralPath $binaryZip -DestinationPath $extractDir -Force
+  Expand-Archive -LiteralPath $runtimeZip -DestinationPath $extractDir -Force
+
+  if (Test-Path -LiteralPath $installDir) {
+    throw "Install directory already exists but llama-server.exe was not found: $installDir"
+  }
+
+  New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+  Move-Item -LiteralPath $extractDir -Destination $installDir
+
+  if (-not (Test-Path -LiteralPath $llamaServerExe)) {
+    throw "llama-server.exe was not found after installing llama.cpp CUDA release: $llamaServerExe"
+  }
+
+  & $llamaServerExe --list-devices | Out-Host
+}
+
+function Resolve-LlamaCppCudaServer {
+  if (-not $LlamaCppCudaEnabled) {
+    return $null
+  }
+
+  if ([string]::IsNullOrWhiteSpace($LlamaCppCudaBinaryUrl)) {
+    return $null
+  }
+
+  $binaryFileName = Get-UrlFileName $LlamaCppCudaBinaryUrl
+  $installLeaf = Get-FileNameWithoutZipExtension $binaryFileName
+  $candidate = Join-Path (Join-Path $HOME ".local\share\llama.cpp\$installLeaf") "llama-server.exe"
+
+  if (Test-Path -LiteralPath $candidate) {
+    return $candidate
+  }
+
+  return $null
+}
+
+function Resolve-LlamaServer {
+  $cudaServer = Resolve-LlamaCppCudaServer
+  if ($cudaServer) {
+    return $cudaServer
+  }
+
+  $mise = Get-Command "mise" -ErrorAction SilentlyContinue
+  if ($mise) {
+    $candidate = (& $mise.Source which llama-server 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $candidate -and (Test-Path -LiteralPath $candidate)) {
+      return $candidate
+    }
+  }
+
+  $command = Get-Command "llama-server.exe" -ErrorAction SilentlyContinue
+  if ($command) {
+    return $command.Source
+  }
+
+  $command = Get-Command "llama-server" -ErrorAction SilentlyContinue
+  if ($command) {
+    return $command.Source
+  }
+
+  throw "llama-server was not found. Run 'mise i' and 'mise reshim', or install llama.cpp another way."
+}
+
+function Join-TaskArgument($Arguments) {
+  $quotedArguments = foreach ($argument in $Arguments) {
+    if ($argument -match '[\s"]') {
+      "`"$($argument -replace '"', '\"')`""
+    } else {
+      $argument
+    }
+  }
+
+  return ($quotedArguments -join " ")
+}
+
+Install-LlamaCppCuda
+New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+New-Item -ItemType Directory -Path $CacheDir -Force | Out-Null
+[Environment]::SetEnvironmentVariable("LLAMA_CACHE", $CacheDir, "User")
+
+$LlamaServer = Resolve-LlamaServer
+
+if ([string]::IsNullOrWhiteSpace($HfRepo)) {
+  throw "local_llm.hfRepo is empty."
+}
+
+if (-not [string]::IsNullOrWhiteSpace($HfFile)) {
+  $ModelArgs = @("-hf", $HfRepo, "--hf-file", $HfFile)
+} elseif ([string]::IsNullOrWhiteSpace($HfQuant)) {
+  $ModelArgs = @("-hf", $HfRepo)
+} else {
+  $ModelArgs = @("-hf", "${HfRepo}:$HfQuant")
+}
+
+$TaskArgs = @(
+  @($ModelArgs)
+  @("--alias", $ModelAlias)
+  @("--host", $HostName)
+  @("--port", [string]$Port)
+  @("--ctx-size", [string]$CtxSize)
+  @("--n-gpu-layers", $GpuLayers)
+  @("--log-file", $LogFile)
+  @("--log-timestamps")
+)
+
+if ($LlamaServerVerbose) {
+  $TaskArgs += "--verbose"
+}
+
+$TaskArgs += $ExtraArgs
+
+$Action = New-ScheduledTaskAction `
+  -Execute $LlamaServer `
+  -Argument (Join-TaskArgument $TaskArgs)
+
+$Trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+
+$Settings = New-ScheduledTaskSettingsSet `
+  -AllowStartIfOnBatteries `
+  -DontStopIfGoingOnBatteries `
+  -RestartCount 3 `
+  -RestartInterval (New-TimeSpan -Minutes 1)
+
+Register-ScheduledTask `
+  -TaskName $TaskName `
+  -Action $Action `
+  -Trigger $Trigger `
+  -Settings $Settings `
+  -Description "Start local llama.cpp server at user logon" `
+  -Force | Out-Null
+
+$task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if ($task) {
+  if ($task.State -eq "Running") {
+    Stop-ScheduledTask -TaskName $TaskName
+    Start-Sleep -Seconds 2
+  }
+
+  Start-ScheduledTask -TaskName $TaskName
+}
