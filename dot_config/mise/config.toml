@@ -9,3 +9,6 @@
 
 [settings]
 experimental = true
+
+[env]
+LLAMA_CPP_API_KEY = "dummy"
