@@ -8,8 +8,8 @@
         serverPort = 9999
         cacheDir = {{ .localLlamaCacheDir | quote }}
         ctxSize = 16384
-        gpuLayers = 40
-        extraArgs = []
+        gpuLayers = 45
+        extraArgs = ["--jinja"]
         llamaServerVerbose = false
         llamaCppCudaEnabled = true
         llamaCppCudaRuntimeUrl = "https://github.com/ggml-org/llama.cpp/releases/download/b9128/cudart-llama-bin-win-cuda-13.1-x64.zip"
