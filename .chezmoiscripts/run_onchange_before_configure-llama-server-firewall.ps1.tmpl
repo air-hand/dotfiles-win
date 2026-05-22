@@ -1,0 +1,88 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+{{- $localLLM := .local_llm }}
+{{- $enabled := $localLLM.enabled }}
+{{- $serverPort := $localLLM.serverPort }}
+{{- $wslRemoteAddress := get $localLLM "wslRemoteAddress" | default "192.168.16.0/20" }}
+
+$RuleName = "llama-server from WSL2"
+$Port = {{ $serverPort }}
+$RemoteAddress = {{ $wslRemoteAddress | quote }}
+$Enabled = [bool]::Parse({{ $enabled | quote }})
+
+function Test-IsAdministrator {
+  $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+  $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+  return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function ConvertTo-PowerShellSingleQuotedLiteral($Value) {
+  return "'" + ([string]$Value -replace "'", "''") + "'"
+}
+
+function Invoke-LlamaServerFirewallRuleConfiguration {
+  Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue |
+    Remove-NetFirewallRule
+
+  if (-not $Enabled) {
+    return
+  }
+
+  New-NetFirewallRule `
+    -DisplayName $RuleName `
+    -Direction Inbound `
+    -Action Allow `
+    -Protocol TCP `
+    -LocalPort $Port `
+    -RemoteAddress $RemoteAddress `
+    -Profile Any | Out-Null
+}
+
+if (Test-IsAdministrator) {
+  Invoke-LlamaServerFirewallRuleConfiguration
+  return
+}
+
+if (-not $Enabled) {
+  Write-Warning "Skipping firewall rule removal for llama-server; run chezmoi apply as administrator to configure it."
+  return
+}
+
+$elevatedScript = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = "Stop"
+`$RuleName = $(ConvertTo-PowerShellSingleQuotedLiteral $RuleName)
+`$Port = $Port
+`$RemoteAddress = $(ConvertTo-PowerShellSingleQuotedLiteral $RemoteAddress)
+
+Get-NetFirewallRule -DisplayName `$RuleName -ErrorAction SilentlyContinue |
+  Remove-NetFirewallRule
+
+New-NetFirewallRule ``
+  -DisplayName `$RuleName ``
+  -Direction Inbound ``
+  -Action Allow ``
+  -Protocol TCP ``
+  -LocalPort `$Port ``
+  -RemoteAddress `$RemoteAddress ``
+  -Profile Any | Out-Null
+"@
+
+$scriptPath = Join-Path ([IO.Path]::GetTempPath()) "chezmoi-llama-server-firewall.ps1"
+try {
+  Set-Content -LiteralPath $scriptPath -Value $elevatedScript -Encoding UTF8
+  $pwshPath = Join-Path $PSHOME "pwsh.exe"
+  $process = Start-Process `
+    -FilePath $pwshPath `
+    -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath) `
+    -Verb RunAs `
+    -Wait `
+    -PassThru
+
+  if ($process.ExitCode -ne 0) {
+    throw "Elevated firewall rule configuration failed with exit code $($process.ExitCode)."
+  }
+} finally {
+  Remove-Item -LiteralPath $scriptPath -Force -ErrorAction SilentlyContinue
+}

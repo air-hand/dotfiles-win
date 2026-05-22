@@ -1,0 +1,57 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# dependencies = ["tomlkit"]
+# ///
+
+from pathlib import Path
+
+import tomlkit
+
+ENABLED = {{ if .local_llm.enabled }}True{{ else }}False{{ end }}
+MODEL_ALIAS = {{ .local_llm.modelAlias | quote }}
+SERVER_PORT = {{ .local_llm.serverPort }}
+CLIENT_HOST = "127.0.0.1"
+
+
+def modify_config():
+    path = Path.home() / ".codex" / "config.toml"
+    if not path.exists():
+        if not ENABLED:
+            return
+        raise FileNotFoundError(
+            f"{path} does not exist. Run Codex once to initialize it before applying this chezmoi script."
+        )
+
+    doc = tomlkit.parse(path.read_text())
+    model_providers = doc.setdefault("model_providers", tomlkit.table())
+    profiles = doc.setdefault("profiles", tomlkit.table())
+
+    if not ENABLED:
+        model_providers.pop("local", None)
+        profiles.pop("local", None)
+        path.write_text(tomlkit.dumps(doc))
+        return
+
+    local_provider = tomlkit.table()
+    local_provider["name"] = "local"
+    local_provider["base_url"] = f"http://{CLIENT_HOST}:{SERVER_PORT}/v1"
+    local_provider["wire_api"] = "responses"
+    local_provider["stream_idle_timeout_ms"] = 10000000
+    model_providers["local"] = local_provider
+
+    local_profile = tomlkit.table()
+    local_profile["model_provider"] = "local"
+    local_profile["model"] = MODEL_ALIAS
+    local_profile["web_search"] = "disabled"
+
+    local_features = tomlkit.table()
+    local_features["image_generation"] = False
+    local_features["apps"] = False
+
+    local_profile["features"] = local_features
+    profiles["local"] = local_profile
+
+    path.write_text(tomlkit.dumps(doc))
+
+
+modify_config()

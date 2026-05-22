@@ -6,15 +6,12 @@
 
 
 [CmdletBinding()]
-param(
-  [string]$GITHUB_OWNER  = "air-hand"
-  , [string]$GITHUB_DOTFILES_REPO   = "dotfiles-win"
-)
+param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$commonModulePath = Join-Path $PSScriptRoot "Documents\powershell\Dotfiles.Common.psm1"
+$commonModulePath = Join-Path $PSScriptRoot "Documents\PowerShell\ProfileModules\Dotfiles.Common.psm1"
 Import-Module $commonModulePath -Force -DisableNameChecking
 
 function Ensure-Chezmoi {
@@ -22,17 +19,25 @@ function Ensure-Chezmoi {
     return
   }
   Write-Info "chezmoi not found. installing"
-  winget install -e --id twpayne.chezmoi
+  winget install -e --id twpayne.chezmoi --accept-package-agreements --accept-source-agreements --silent
+  $machinePath = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+  $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+  $seenPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  $pathParts = foreach ($path in @($env:PATH, $userPath, $machinePath) -split [regex]::Escape([IO.Path]::PathSeparator)) {
+    if (-not [string]::IsNullOrWhiteSpace($path) -and $seenPaths.Add($path)) {
+      $path
+    }
+  }
+  $env:PATH = $pathParts -join [IO.Path]::PathSeparator
+
   if (-not(Has-Command "chezmoi")) {
-    Write-Warn "installed chezmoi, but not in PATH. refresh current shell."
+    throw "installed chezmoi, but chezmoi is still not in PATH."
   }
 }
 
 Write-Info "Bootstrapping Windows dotfiles..."
 
 Ensure-Chezmoi
-chezmoi init https://github.com/$GITHUB_OWNER/$GITHUB_DOTFILES_REPO
-chezmoi update
-chezmoi apply
+chezmoi init --apply --source $PSScriptRoot
 
 Write-Ok "Done."

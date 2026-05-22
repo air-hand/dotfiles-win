@@ -7,9 +7,7 @@
 "zellij" = "0.44.3"
 "python" = "3.14.5"
 "ripgrep" = "15.1.0"
+"uv" = "0.11.14"
 
 [settings]
 experimental = true
-
-[env]
-LLAMA_CPP_API_KEY = "dummy"
