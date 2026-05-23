@@ -1,18 +1,19 @@
-    [data.local_llm]
-        enabled = true
-        modelAlias = "gemma-4-e4b-it-q3_k_m"
-        hfRepo = "unsloth/gemma-4-E4B-it-GGUF"
-        hfQuant = "Q3_K_M"
-        hfFile = "gemma-4-E4B-it-Q3_K_M.gguf"
-        serverHost = "127.0.0.1"
-        serverPort = 9999
-        cacheDir = {{ .localLlamaCacheDir | quote }}
-        ctxSize = 16384
-        gpuLayers = 45
-        extraArgs = ["--jinja"]
-        llamaServerVerbose = false
-        llamaCppCudaEnabled = true
-        llamaCppCudaRuntimeUrl = "https://github.com/ggml-org/llama.cpp/releases/download/b9128/cudart-llama-bin-win-cuda-13.1-x64.zip"
-        llamaCppCudaRuntimeSha256 = "f96935e7e385e3b2d0189239077c10fe8fd7e95690fea4afec455b1b6c7e3f18"
-        llamaCppCudaBinaryUrl = "https://github.com/ggml-org/llama.cpp/releases/download/b9128/llama-b9128-bin-win-cuda-13.1-x64.zip"
-        llamaCppCudaBinarySha256 = "787c642f268f33c910262fdf684368d3bea775839d357a048bba55cbe26885c6"
+[data.local_llm]
+    enabled = {{ .enabled }}
+    modelAlias = "gemma-4-e4b-it-q3_k_m"
+    hfRepo = "unsloth/gemma-4-E4B-it-GGUF"
+    hfQuant = "Q3_K_M"
+    hfFile = "gemma-4-E4B-it-Q3_K_M.gguf"
+    serverHost = "0.0.0.0"
+    serverPort = 9999
+    wslRemoteAddress = "192.168.16.0/20"
+    cacheDir = {{ .localLlamaCacheDir | quote }}
+    ctxSize = 16384
+    gpuLayers = 15
+    extraArgs = ["--jinja"]
+    llamaServerVerbose = false
+    llamaCppCudaEnabled = true
+    llamaCppCudaRuntimeUrl = "https://github.com/ggml-org/llama.cpp/releases/download/b9279/cudart-llama-bin-win-cuda-13.1-x64.zip"
+    llamaCppCudaRuntimeSha256 = "f96935e7e385e3b2d0189239077c10fe8fd7e95690fea4afec455b1b6c7e3f18"
+    llamaCppCudaBinaryUrl = "https://github.com/ggml-org/llama.cpp/releases/download/b9279/llama-b9279-bin-win-cuda-13.1-x64.zip"
+    llamaCppCudaBinarySha256 = "70985c61aaa0b0dcaece4fd6e3c4ac34f6a052dc2dc473ad30fefb207c7d0d4a"

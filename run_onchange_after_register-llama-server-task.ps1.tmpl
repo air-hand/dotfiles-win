@@ -20,9 +20,6 @@ $ErrorActionPreference = "Stop"
 {{- $llamaCppCudaBinaryUrl := $localLLM.llamaCppCudaBinaryUrl }}
 {{- $llamaCppCudaBinarySha256 := $localLLM.llamaCppCudaBinarySha256 }}
 
-# chezmoi onchange dependencies:
-# local-llm-config = {{ includeTemplate ".chezmoitemplates/local_llm.toml.tmpl" (dict "localLlamaCacheDir" $cacheDir) | sha256sum }}
-
 $TaskName = "llama-server"
 $ModelAlias = {{ $modelAlias | quote }}
 $HfRepo = {{ $hfRepo | quote }}

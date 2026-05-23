@@ -22,7 +22,9 @@ if (Get-Module -ListAvailable -Name posh-git) {
 }
 
 # Enable mise shims (so `gh`, `codex`, etc. resolve via mise)
-mise activate pwsh | Out-String | Invoke-Expression
+if (Has-Command "mise") {
+  mise activate pwsh | Out-String | Invoke-Expression
+}
 
 # --- Optional quality-of-life (safe to delete) ---
 # Better history/search behavior
@@ -43,6 +45,6 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 # Convenience aliases (optional)
 Set-Alias ll Get-ChildItem -Option AllScope
 
-function codex-llama {
-  codex -p llama_cpp @args
+function codex-local {
+  codex -p local @args
 }
