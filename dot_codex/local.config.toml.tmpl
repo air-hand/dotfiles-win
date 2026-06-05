@@ -1,0 +1,15 @@
+{{- if .local_llm.enabled -}}
+model_provider = "local"
+model = {{ .local_llm.modelAlias | quote }}
+web_search = "disabled"
+
+[model_providers.local]
+name = "local"
+base_url = "http://127.0.0.1:{{ .local_llm.serverPort }}/v1"
+wire_api = "responses"
+stream_idle_timeout_ms = 10000000
+
+[features]
+image_generation = false
+apps = false
+{{- end -}}
