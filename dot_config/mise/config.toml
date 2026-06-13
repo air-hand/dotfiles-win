@@ -5,7 +5,7 @@
 "npm:@openai/codex" = "0.139.0"
 "neovim" = "0.12.2"
 "zellij" = "0.44.3"
-"python" = "3.14.5"
+"python" = "3.14.6"
 "ripgrep" = "15.1.0"
 "uv" = "0.11.19"
 
