@@ -1,6 +1,6 @@
 {
   extends: [
-    'helpers:pinGitHubActionDigests',
+    'helpers:pinGitHubActionDigestsToSemver',
   ],
   prConcurrentLimit: 10,
   enabledManagers: ['mise', 'github-actions'],
