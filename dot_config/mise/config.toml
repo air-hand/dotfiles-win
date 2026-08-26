@@ -3,7 +3,7 @@
 "github:cli/cli" = "2.98.0"
 "pinact" = "4.1.1"
 "npm:@openai/codex" = "0.149.1"
-"neovim" = "0.12.4"
+"neovim" = "0.12.5"
 "zellij" = "0.45.0"
 "python" = "3.14.7"
 "ripgrep" = "15.2.0"
