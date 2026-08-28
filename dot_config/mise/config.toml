@@ -2,7 +2,7 @@
 # CLI tools
 "github:cli/cli" = "2.98.0"
 "pinact" = "4.1.1"
-"npm:@openai/codex" = "0.150.0"
+"npm:@openai/codex" = "0.150.1"
 "neovim" = "0.12.5"
 "zellij" = "0.45.0"
 "python" = "3.14.7"
