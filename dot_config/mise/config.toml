@@ -4,7 +4,7 @@
 "pinact" = "4.1.1"
 "npm:@openai/codex" = "0.151.0"
 "neovim" = "0.12.5"
-"zellij" = "0.45.0"
+"zellij" = "0.45.1"
 "python" = "3.14.7"
 "ripgrep" = "15.2.0"
 "uv" = "0.12.7"
