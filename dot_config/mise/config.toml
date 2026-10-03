@@ -1,6 +1,6 @@
 [tools]
 # CLI tools
-"github:cli/cli" = "2.101.0"
+"github:cli/cli" = "2.102.0"
 "pinact" = "5.0.0"
 "npm:@openai/codex" = "0.159.3"
 "neovim" = "0.12.5"
