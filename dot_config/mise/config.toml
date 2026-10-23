@@ -7,7 +7,7 @@
 "zellij" = "0.45.1"
 "python" = "3.15.0"
 "ripgrep" = "15.2.0"
-"uv" = "0.13.3"
+"uv" = "0.13.4"
 
 [settings]
 experimental = true
