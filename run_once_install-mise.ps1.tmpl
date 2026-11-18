@@ -4,12 +4,13 @@ $ErrorActionPreference = "Stop"
 $commonModulePath = Join-Path '{{ .chezmoi.sourceDir }}' 'Documents\PowerShell\ProfileModules\Dotfiles.Common.psm1'
 Import-Module $commonModulePath -Force -DisableNameChecking
 
+winget uninstall -e --id jdx.mise
+
 if (-not(Has-Command "mise")) {
-    winget install -e --id jdx.mise
+    irm https://mise.run/powershell | iex
 }
 
 # install cli globally by mise. hash: {{ include "dot_config/mise/config.toml" | sha256sum }}
-
 mise self-update -y
 mise i
 mise reshim
